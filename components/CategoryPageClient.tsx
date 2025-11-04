@@ -50,9 +50,9 @@ export function CategoryPageClient({
     }
 
     if (ratingFilter === '4plus') {
-      filtered = filtered.filter((g) => g.rating >= 4);
+      filtered = filtered.filter((g) => (g.rating || 0) >= 4);
     } else if (ratingFilter === '3plus') {
-      filtered = filtered.filter((g) => g.rating >= 3);
+      filtered = filtered.filter((g) => (g.rating || 0) >= 3);
     }
 
     switch (sortBy) {
@@ -66,7 +66,7 @@ export function CategoryPageClient({
         );
         break;
       case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case 'title':
         filtered.sort((a, b) => a.title.localeCompare(b.title, 'tr'));

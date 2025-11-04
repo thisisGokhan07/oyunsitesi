@@ -2,12 +2,18 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CategoryPageClient } from '@/components/CategoryPageClient';
-import { mockCategories, mockContent } from '@/lib/mock-data';
+import { getCategoryBySlug, getContentByCategory, getAllCategories } from '@/lib/data-service';
 
-export function generateStaticParams() {
-  return mockCategories.map((category) => ({
-    slug: category.slug,
-  }));
+export async function generateStaticParams() {
+  try {
+    const allCategories = await getAllCategories();
+    return (allCategories as any[]).map((category) => ({
+      slug: category.slug,
+    }));
+  } catch (error) {
+    console.error('Error generating static params for categories:', error);
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -15,7 +21,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const category = mockCategories.find((c) => c.slug === params.slug);
+  const category = await getCategoryBySlug(params.slug);
 
   if (!category) {
     return {
@@ -42,12 +48,12 @@ export async function generateMetadata({
   };
 }
 
-export default function CategoryPage({
+export default async function CategoryPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const category = mockCategories.find((c) => c.slug === params.slug);
+  const category = await getCategoryBySlug(params.slug);
 
   if (!category) {
     return (
@@ -66,9 +72,7 @@ export default function CategoryPage({
     );
   }
 
-  const categoryGames = mockContent.filter(
-    (game) => game.category_id === category.id
-  );
+  const categoryGames = await getContentByCategory(params.slug);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,7 +80,7 @@ export default function CategoryPage({
 
       <main className="flex-1 pt-16 lg:pt-20">
         <div className="container py-6">
-          <CategoryPageClient category={category} games={categoryGames} />
+          <CategoryPageClient category={category as any} games={categoryGames as any} />
         </div>
       </main>
 

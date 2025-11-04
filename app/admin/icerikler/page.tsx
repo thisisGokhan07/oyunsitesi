@@ -41,10 +41,11 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/client';
 import { generateSlug } from '@/lib/utils/slug';
+import { FileUpload } from '@/components/FileUpload';
 import type { Content, Category, ContentType, AgeGroup } from '@/types';
 
 export default function IceriklerPage() {
@@ -54,10 +55,15 @@ export default function IceriklerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterAgeGroup, setFilterAgeGroup] = useState<string>('all');
+  const [filterContentType, setFilterContentType] = useState<string>('all');
+  const [filterPublished, setFilterPublished] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState<Content | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -261,8 +267,77 @@ export default function IceriklerPage() {
       content.slug.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || content.category_id === filterCategory;
     const matchesAge = filterAgeGroup === 'all' || content.age_group === filterAgeGroup;
-    return matchesSearch && matchesCategory && matchesAge;
+    const matchesType = filterContentType === 'all' || content.content_type === filterContentType;
+    const matchesPublished = 
+      filterPublished === 'all' || 
+      (filterPublished === 'published' && content.published) ||
+      (filterPublished === 'draft' && !content.published);
+    return matchesSearch && matchesCategory && matchesAge && matchesType && matchesPublished;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredContents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedContents = filteredContents.slice(startIndex, endIndex);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategory, filterAgeGroup, filterContentType, filterPublished]);
+
+  // Toplu işlemler
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedContents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedContents.map(c => c.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    try {
+      const { error } = await supabase
+        .from('content')
+        .delete()
+        .in('id', Array.from(selectedIds));
+      
+      if (error) throw error;
+      toast.success(`${selectedIds.size} içerik silindi!`);
+      setSelectedIds(new Set());
+      fetchContents();
+    } catch (error: any) {
+      toast.error('Toplu silme başarısız: ' + error.message);
+    }
+  }
+
+  async function handleBulkPublish(publish: boolean) {
+    if (selectedIds.size === 0) return;
+    try {
+      const { error } = await (supabase
+        .from('content')
+        .update as any)({ published: publish })
+        .in('id', Array.from(selectedIds));
+      
+      if (error) throw error;
+      toast.success(`${selectedIds.size} içerik ${publish ? 'yayınlandı' : 'yayından kaldırıldı'}!`);
+      setSelectedIds(new Set());
+      fetchContents();
+    } catch (error: any) {
+      toast.error('Toplu işlem başarısız: ' + error.message);
+    }
+  }
 
   const ContentForm = () => (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -363,12 +438,13 @@ export default function IceriklerPage() {
         </div>
 
         <div className="col-span-2">
-          <Label htmlFor="thumbnail_url">Thumbnail URL *</Label>
-          <Input
-            id="thumbnail_url"
+          <FileUpload
             value={formData.thumbnail_url}
-            onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-            placeholder="https://..."
+            onChange={(url) => setFormData({ ...formData, thumbnail_url: url })}
+            folder="thumbnails"
+            accept="image/*"
+            label="Thumbnail *"
+            maxSize={5}
           />
         </div>
 
@@ -378,8 +454,28 @@ export default function IceriklerPage() {
             id="content_url"
             value={formData.content_url}
             onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
-            placeholder="https://... (iframe URL)"
+            placeholder="https://... (iframe URL veya video/audio URL)"
           />
+          {formData.content_type === 'video' && (
+            <FileUpload
+              value={formData.content_url}
+              onChange={(url) => setFormData({ ...formData, content_url: url })}
+              folder="videos"
+              accept="video/*"
+              label="Video Dosyası"
+              maxSize={100}
+            />
+          )}
+          {formData.content_type === 'audio_story' && (
+            <FileUpload
+              value={formData.content_url}
+              onChange={(url) => setFormData({ ...formData, content_url: url })}
+              folder="audio"
+              accept="audio/*"
+              label="Ses Dosyası"
+              maxSize={50}
+            />
+          )}
         </div>
 
         <div>
@@ -391,6 +487,51 @@ export default function IceriklerPage() {
             onChange={(e) =>
               setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 0 })
             }
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label htmlFor="instructions">Talimatlar/Kurallar</Label>
+          <Textarea
+            id="instructions"
+            value={formData.instructions}
+            onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+            placeholder="Oyun kuralları veya talimatları"
+            rows={3}
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label htmlFor="meta_title">SEO Meta Başlık</Label>
+          <Input
+            id="meta_title"
+            value={formData.meta_title}
+            onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+            placeholder="SEO için özel başlık (opsiyonel)"
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label htmlFor="meta_description">SEO Meta Açıklama</Label>
+          <Textarea
+            id="meta_description"
+            value={formData.meta_description}
+            onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+            placeholder="SEO için açıklama (opsiyonel)"
+            rows={2}
+          />
+        </div>
+
+        <div className="col-span-2">
+          <Label htmlFor="keywords">Keywords (virgülle ayırın)</Label>
+          <Input
+            id="keywords"
+            value={formData.keywords.join(', ')}
+            onChange={(e) => {
+              const keywords = e.target.value.split(',').map((k) => k.trim()).filter(Boolean);
+              setFormData({ ...formData, keywords });
+            }}
+            placeholder="oyun, eğitici, çocuk, zeka"
           />
         </div>
 
@@ -503,12 +644,71 @@ export default function IceriklerPage() {
                 <SelectItem value="family">Aile</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterContentType} onValueChange={setFilterContentType}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="İçerik Tipi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Tipler</SelectItem>
+                <SelectItem value="game">Oyun</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="audio_story">Sesli Masal</SelectItem>
+                <SelectItem value="coloring_book">Boyama</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPublished} onValueChange={setFilterPublished}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Durum" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tümü</SelectItem>
+                <SelectItem value="published">Yayınlanan</SelectItem>
+                <SelectItem value="draft">Taslak</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+              <span className="text-sm text-gray-400">{selectedIds.size} içerik seçildi</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkPublish(true)}
+                className="ml-auto"
+              >
+                Toplu Yayınla
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkPublish(false)}
+              >
+                Toplu Kaldır
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleBulkDelete}
+              >
+                Toplu Sil
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectAll}
+                    className="h-8 w-8 p-0"
+                  >
+                    <CheckSquare className={`h-4 w-4 ${selectedIds.size === paginatedContents.length && paginatedContents.length > 0 ? 'text-orange-500' : ''}`} />
+                  </Button>
+                </TableHead>
                 <TableHead>Başlık</TableHead>
                 <TableHead>Kategori</TableHead>
                 <TableHead>Tip</TableHead>
@@ -519,15 +719,25 @@ export default function IceriklerPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContents.length === 0 ? (
+              {paginatedContents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-400">
                     İçerik bulunamadı
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContents.map((content) => (
+                paginatedContents.map((content) => (
                   <TableRow key={content.id}>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleSelect(content.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <CheckSquare className={`h-4 w-4 ${selectedIds.has(content.id) ? 'text-orange-500' : ''}`} />
+                      </Button>
+                    </TableCell>
                     <TableCell className="font-medium">{content.title}</TableCell>
                     <TableCell>
                       {(content as any).categories?.name || 'Kategorisiz'}
@@ -570,6 +780,56 @@ export default function IceriklerPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+              <div className="text-sm text-gray-400">
+                {startIndex + 1}-{Math.min(endIndex, filteredContents.length)} / {filteredContents.length} içerik
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={currentPage === pageNum ? "bg-orange-500" : ""}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

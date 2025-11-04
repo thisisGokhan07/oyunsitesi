@@ -123,16 +123,27 @@ CREATE POLICY "Content is viewable by everyone"
   USING (published = true);
 
 -- RLS Policies for user_profiles
+-- Allow users to view their own profile
 CREATE POLICY "Users can view own profile"
   ON user_profiles FOR SELECT
   TO authenticated
   USING (auth.uid() = id);
 
+-- Allow users to insert their own profile (when signing up)
+CREATE POLICY "Users can insert own profile"
+  ON user_profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+-- Allow users to update their own profile
 CREATE POLICY "Users can update own profile"
   ON user_profiles FOR UPDATE
   TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
+
+-- Allow service role to manage all profiles (for admin operations)
+-- This is handled via SECURITY DEFINER functions or service role key
 
 -- RLS Policies for ratings
 CREATE POLICY "Ratings are viewable by everyone"
@@ -150,10 +161,17 @@ CREATE POLICY "Users can update own ratings"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- RLS Policies for analytics (no public access)
+-- RLS Policies for analytics
+-- Allow public inserts for analytics (anonymous tracking)
 CREATE POLICY "Analytics are insertable by everyone"
   ON content_analytics FOR INSERT
   WITH CHECK (true);
+
+-- Allow reading analytics (can be restricted later if needed)
+CREATE POLICY "Analytics are viewable by authenticated users"
+  ON content_analytics FOR SELECT
+  TO authenticated
+  USING (true);
 
 -- Function to increment play count
 CREATE OR REPLACE FUNCTION increment_play_count(content_id uuid)

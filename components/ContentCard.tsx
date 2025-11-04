@@ -55,7 +55,7 @@ export function ContentCard({ content }: ContentCardProps) {
 
           <div className="flex items-center gap-1">
             <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-            <span className="font-medium">{content.rating.toFixed(1)}</span>
+            <span className="font-medium">{(content.rating || 0).toFixed(1)}</span>
           </div>
         </div>
       </div>

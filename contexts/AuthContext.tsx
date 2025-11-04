@@ -70,24 +70,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       if (!data) {
-        const newProfile: Partial<UserProfileRow> = {
-          id: userId,
-          display_name: user?.user_metadata?.display_name || 'User',
-          role: 'user',
-          is_premium: false,
-          favorite_content: [],
-        };
+        // Try to create profile using RPC function first (more reliable)
+        try {
+          const { error: rpcError } = await (supabase.rpc as any)('ensure_user_profile', {
+            user_uuid: userId,
+            display_name: user?.user_metadata?.display_name || 'User',
+          });
 
-        const { data: created, error: createError } = await supabase
-          .from('user_profiles')
-          .insert(newProfile as any)
-          .select()
-          .single();
+          if (rpcError) {
+            console.log('RPC function not available, trying direct insert:', rpcError.message);
+            
+            // Fallback: Direct insert (RLS is disabled, so this should work)
+            const newProfile: Partial<UserProfileRow> = {
+              id: userId,
+              display_name: user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User',
+              role: 'user',
+              is_premium: false,
+              favorite_content: [],
+            };
 
-        if (createError) {
-          console.error('Error creating profile:', createError);
-        } else {
-          setProfile(created as UserProfileRow);
+            const { data: created, error: createError } = await supabase
+              .from('user_profiles')
+              .insert(newProfile as any)
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('Error creating profile:', createError);
+              // Don't throw - profile might be created by trigger
+              // Just fetch again after a short delay
+              setTimeout(async () => {
+                const { data: retryData } = await supabase
+                  .from('user_profiles')
+                  .select('*')
+                  .eq('id', userId)
+                  .maybeSingle();
+                if (retryData) {
+                  setProfile(retryData as UserProfileRow);
+                }
+              }, 1000);
+            } else if (created) {
+              setProfile(created as UserProfileRow);
+            }
+          } else {
+            // RPC succeeded, fetch the profile
+            const { data: fetched } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+            if (fetched) {
+              setProfile(fetched as UserProfileRow);
+            }
+          }
+        } catch (error) {
+          console.error('Error in profile creation:', error);
         }
       } else {
         setProfile(data as UserProfileRow);
@@ -143,12 +180,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   }
 
+  async function changePassword(currentPassword: string, newPassword: string) {
+    if (!user) throw new Error('No user logged in');
+
+    // Önce mevcut şifreyi doğrula
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      throw new Error('Mevcut şifre yanlış');
+    }
+
+    // Şifreyi güncelle
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) throw updateError;
+  }
+
   async function updateProfile(updates: Partial<UserProfileRow>) {
     if (!user) throw new Error('No user logged in');
 
     const { error } = await (supabase
       .from('user_profiles')
       .update as any)(updates)
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    await fetchProfile(user.id);
+  }
+
+  async function upgradeToPremium(durationMonths: number = 1) {
+    if (!user) throw new Error('No user logged in');
+
+    // Premium bitiş tarihini hesapla
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
+
+    // Mevcut premium süresini kontrol et
+    const currentExpiresAt = profile?.premium_expires_at 
+      ? new Date(profile.premium_expires_at) 
+      : null;
+
+    let finalExpiresAt = expiresAt;
+    
+    // Eğer aktif premium varsa, mevcut süreye ekle
+    if (currentExpiresAt && currentExpiresAt > new Date()) {
+      finalExpiresAt = new Date(currentExpiresAt);
+      finalExpiresAt.setMonth(finalExpiresAt.getMonth() + durationMonths);
+    }
+
+    const { error } = await (supabase
+      .from('user_profiles')
+      .update as any)({
+      is_premium: true,
+      premium_expires_at: finalExpiresAt.toISOString(),
+    })
       .eq('id', user.id);
 
     if (error) throw error;
@@ -166,7 +257,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signOut,
     resetPassword,
+    changePassword,
     updateProfile,
+    upgradeToPremium,
     isAdmin: ['admin', 'super_admin', 'editor', 'moderator'].includes(profile?.role || ''),
     isPremium: profile?.is_premium || false,
   };

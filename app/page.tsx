@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Gamepad2, Grid3x3 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -8,23 +8,45 @@ import { AgeGroupTabs } from '@/components/AgeGroupTabs';
 import { ContentCard } from '@/components/ContentCard';
 import { CategoryCard } from '@/components/CategoryCard';
 import { Button } from '@/components/ui/button';
-import { mockContent, mockCategories } from '@/lib/mock-data';
+import { getAllContent, getAllCategories } from '@/lib/data-service';
 import { AgeGroup } from '@/types';
+import type { Content, Category } from '@/types';
 
 export default function Home() {
   const [selectedAgeGroup, setSelectedAgeGroup] = useState<AgeGroup | 'all'>('all');
+  const [content, setContent] = useState<Content[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filterByAgeGroup = (items: typeof mockContent) => {
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [contentData, categoriesData] = await Promise.all([
+          getAllContent(),
+          getAllCategories(),
+        ]);
+        setContent(contentData as any);
+        setCategories(categoriesData as any);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const filterByAgeGroup = (items: Content[]) => {
     if (selectedAgeGroup === 'all') return items;
     return items.filter((item) => item.age_group === selectedAgeGroup);
   };
 
   const popularContent = filterByAgeGroup(
-    [...mockContent].sort((a, b) => b.play_count - a.play_count).slice(0, 16)
+    [...content].sort((a, b) => b.play_count - a.play_count).slice(0, 16)
   );
 
   const newContent = filterByAgeGroup(
-    [...mockContent].sort((a, b) =>
+    [...content].sort((a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     ).slice(0, 16)
   );
@@ -108,11 +130,19 @@ export default function Home() {
             <h2 className="text-xl font-bold">Kategoriler</h2>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {mockCategories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-24 bg-gray-800 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {categories.map((category) => (
+                <CategoryCard key={category.id} category={category} />
+              ))}
+            </div>
+          )}
         </section>
       </main>
 

@@ -1,6 +1,106 @@
-import { Gamepad2, Instagram, Youtube, Music } from 'lucide-react';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Gamepad2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
+import Link from 'next/link';
+import * as Icons from 'lucide-react';
+
+type FooterLink = {
+  id: string;
+  title: string;
+  url: string;
+  section: 'quick_links' | 'support' | 'social';
+  icon_name: string | null;
+  is_external: boolean;
+};
 
 export function Footer() {
+  const [quickLinks, setQuickLinks] = useState<FooterLink[]>([]);
+  const [supportLinks, setSupportLinks] = useState<FooterLink[]>([]);
+  const [socialLinks, setSocialLinks] = useState<FooterLink[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFooterLinks();
+  }, []);
+
+  async function loadFooterLinks() {
+    try {
+      const { data, error } = await supabase
+        .from('footer_links')
+        .select('*')
+        .eq('published', true)
+        .order('section', { ascending: true })
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      const links = (data as any) || [];
+      setQuickLinks(links.filter((l: FooterLink) => l.section === 'quick_links'));
+      setSupportLinks(links.filter((l: FooterLink) => l.section === 'support'));
+      setSocialLinks(links.filter((l: FooterLink) => l.section === 'social'));
+    } catch (error) {
+      console.error('Footer links error:', error);
+      // Fallback to default links if database fails
+      setQuickLinks([
+        { id: '1', title: 'Hakkımızda', url: '/about', section: 'quick_links', icon_name: null, is_external: false },
+        { id: '2', title: 'Kategoriler', url: '/kategori', section: 'quick_links', icon_name: null, is_external: false },
+      ]);
+      setSupportLinks([
+        { id: '3', title: 'İletişim', url: '/contact', section: 'support', icon_name: null, is_external: false },
+        { id: '4', title: 'SSS', url: '/faq', section: 'support', icon_name: null, is_external: false },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getIcon(iconName: string | null) {
+    if (!iconName) return null;
+    const IconComponent = (Icons as any)[iconName];
+    return IconComponent ? <IconComponent className="h-5 w-5" /> : null;
+  }
+
+  function renderLink(link: FooterLink) {
+    const icon = link.icon_name ? getIcon(link.icon_name) : null;
+    const linkContent = (
+      <>
+        {icon && <span className="mr-2">{icon}</span>}
+        {link.title}
+      </>
+    );
+
+    if (link.is_external) {
+      return (
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-primary transition-colors flex items-center"
+        >
+          {linkContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link href={link.url} className="hover:text-primary transition-colors flex items-center">
+        {linkContent}
+      </Link>
+    );
+  }
+
+  if (loading) {
+    return (
+      <footer className="bg-card border-t border-border mt-20">
+        <div className="container py-12">
+          <div className="text-center text-gray-400">Yükleniyor...</div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="bg-card border-t border-border mt-20">
       <div className="container py-12">
@@ -24,89 +124,61 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4">Hızlı Linkler</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <a href="/about" className="hover:text-primary transition-colors">
-                  Hakkımızda
-                </a>
-              </li>
-              <li>
-                <a href="/categories" className="hover:text-primary transition-colors">
-                  Kategoriler
-                </a>
-              </li>
-              <li>
-                <a href="/new" className="hover:text-primary transition-colors">
-                  Yeni Oyunlar
-                </a>
-              </li>
-              <li>
-                <a href="/popular" className="hover:text-primary transition-colors">
-                  Popüler
-                </a>
-              </li>
+              {quickLinks.length > 0 ? (
+                quickLinks.map((link) => (
+                  <li key={link.id}>
+                    {renderLink(link)}
+                  </li>
+                ))
+              ) : (
+                <li className="text-gray-500">Henüz link eklenmemiş</li>
+              )}
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold mb-4">Destek</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <a href="/contact" className="hover:text-primary transition-colors">
-                  İletişim
-                </a>
-              </li>
-              <li>
-                <a href="/faq" className="hover:text-primary transition-colors">
-                  Sık Sorulan Sorular
-                </a>
-              </li>
-              <li>
-                <a href="/privacy" className="hover:text-primary transition-colors">
-                  Gizlilik Politikası
-                </a>
-              </li>
-              <li>
-                <a href="/terms" className="hover:text-primary transition-colors">
-                  Kullanım Şartları
-                </a>
-              </li>
+              {supportLinks.length > 0 ? (
+                supportLinks.map((link) => (
+                  <li key={link.id}>
+                    {renderLink(link)}
+                  </li>
+                ))
+              ) : (
+                <li className="text-gray-500">Henüz link eklenmemiş</li>
+              )}
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold mb-4">Bizi Takip Edin</h3>
-            <div className="flex gap-3">
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                aria-label="YouTube"
-              >
-                <Youtube className="h-5 w-5" />
-              </a>
-              <a
-                href="https://tiktok.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
-                aria-label="TikTok"
-              >
-                <Music className="h-5 w-5" />
-              </a>
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">
-              Güncel içeriklerden haberdar olun!
-            </p>
+            {socialLinks.length > 0 ? (
+              <>
+                <div className="flex gap-3 mb-4">
+                  {socialLinks.map((link) => {
+                    const icon = link.icon_name ? getIcon(link.icon_name) : null;
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
+                        aria-label={link.title}
+                      >
+                        {icon || <span className="text-xs">{link.title[0]}</span>}
+                      </a>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Güncel içeriklerden haberdar olun!
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Henüz sosyal medya linki eklenmemiş</p>
+            )}
           </div>
         </div>
 

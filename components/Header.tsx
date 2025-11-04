@@ -17,9 +17,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchResults } from '@/components/SearchResults';
-import { mockCategories, mockContent } from '@/lib/mock-data';
 import { useDebounce } from '@/hooks/use-debounce';
 import { searchGames, saveRecentSearch, getRecentSearches, trackSearch } from '@/lib/search';
+import { searchContent, getAllCategories } from '@/lib/data-service';
 
 export function Header() {
   const { user, profile, signOut, isAdmin, loading: authLoading } = useAuth();
@@ -29,8 +29,9 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(mockContent.slice(0, 0));
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,21 +48,37 @@ export function Header() {
 
   useEffect(() => {
     setRecentSearches(getRecentSearches());
+    async function loadCategories() {
+      try {
+        const data = await getAllCategories();
+        setCategories((data as any) || []);
+      } catch (error) {
+        console.error('Categories load error:', error);
+      }
+    }
+    loadCategories();
   }, []);
 
   useEffect(() => {
-    if (debouncedQuery.trim()) {
-      setIsSearching(true);
-      setTimeout(() => {
-        const results = searchGames(debouncedQuery, mockContent);
-        setSearchResults(results);
+    async function performSearch() {
+      if (debouncedQuery.trim()) {
+        setIsSearching(true);
+        try {
+          const results = await searchContent(debouncedQuery);
+          setSearchResults((results as any) || []);
+          trackSearch(debouncedQuery, results.length);
+        } catch (error) {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
         setIsSearching(false);
-        trackSearch(debouncedQuery, results.length);
-      }, 200);
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
+      }
     }
+    performSearch();
   }, [debouncedQuery]);
 
   useEffect(() => {
@@ -186,39 +203,40 @@ export function Header() {
           </div>
 
           <nav className="hidden lg:flex items-center gap-4">
-            <div className="relative">
+            <div 
+              className="relative"
+              onMouseEnter={() => setIsCategoriesOpen(true)}
+              onMouseLeave={() => setIsCategoriesOpen(false)}
+            >
               <Button
                 variant="ghost"
                 className="gap-2"
-                onMouseEnter={() => setIsCategoriesOpen(true)}
-                onMouseLeave={() => setIsCategoriesOpen(false)}
               >
                 Kategoriler
                 <ChevronDown className="h-4 w-4" />
               </Button>
 
               {isCategoriesOpen && (
-                <div
-                  className="absolute top-full right-0 mt-2 w-72 bg-card rounded-lg shadow-2xl border border-border p-4 grid grid-cols-1 gap-2"
-                  onMouseEnter={() => setIsCategoriesOpen(true)}
-                  onMouseLeave={() => setIsCategoriesOpen(false)}
-                >
-                  {mockCategories.slice(0, 8).map((category) => (
-                    <a
-                      key={category.id}
-                      href={`/kategori/${category.slug}`}
-                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors"
-                    >
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: category.color_hex || '#666' }}
-                      />
-                      <span className="text-sm">{category.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {category.content_count}
-                      </span>
-                    </a>
-                  ))}
+                <div className="absolute top-full left-0 pt-2 w-72 z-50">
+                  <div className="bg-card rounded-lg shadow-2xl border border-border p-4 grid grid-cols-1 gap-2">
+                    {categories.slice(0, 8).map((category) => (
+                      <Link
+                        key={category.id}
+                        href={`/kategori/${category.slug}`}
+                        onClick={() => setIsCategoriesOpen(false)}
+                        className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors cursor-pointer"
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: category.color_hex || '#666' }}
+                        />
+                        <span className="text-sm flex-1">{category.name}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {category.content_count}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -230,7 +248,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar>
-                      <AvatarImage src={profile?.avatar_url || ''} alt={profile?.display_name || ''} />
+                      <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.display_name || ''} />
                       <AvatarFallback className="bg-primary">
                         {profile?.display_name?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
@@ -330,7 +348,7 @@ export function Header() {
               <div className="text-sm font-semibold text-muted-foreground px-2">
                 Kategoriler
               </div>
-              {mockCategories.slice(0, 6).map((category) => (
+              {categories.slice(0, 6).map((category) => (
                 <a
                   key={category.id}
                   href={`/kategori/${category.slug}`}
@@ -351,7 +369,7 @@ export function Header() {
             {user ? (
               <div className="flex items-center gap-3 p-3 bg-card rounded-lg">
                 <Avatar>
-                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary">
                     {profile?.display_name?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>

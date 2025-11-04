@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
@@ -11,6 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://serigame.com'),
   title: 'SeriGame - Türkiye\'nin En Eğlenceli Oyun ve Eğlence Platformu',
   description: 'Bebekler, çocuklar, yetişkinler ve tüm aile için 1000+ ücretsiz oyun ve eğlence içeriği. Eğitici oyunlar, zeka oyunları, bulmacalar ve daha fazlası!',
   keywords: ['oyun', 'çocuk oyunları', 'bebek oyunları', 'eğitici oyunlar', 'zeka oyunları', 'aile oyunları', 'ücretsiz oyunlar', 'Türkiye'],

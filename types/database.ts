@@ -35,6 +35,8 @@ export type Database = {
           content_type: 'game' | 'video' | 'audio_story' | 'coloring_book';
           age_group: 'baby' | 'child' | 'adult' | 'family';
           category_id: string | null;
+          provider_id: string | null;
+          provider_game_id: string | null;
           thumbnail_url: string;
           content_url: string;
           duration_minutes: number | null;
@@ -81,6 +83,7 @@ export type Database = {
           user_id: string;
           rating: number;
           review: string | null;
+          comment: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -99,6 +102,89 @@ export type Database = {
         };
         Insert: Omit<Database['public']['Tables']['content_analytics']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['content_analytics']['Insert']>;
+      };
+      footer_links: {
+        Row: {
+          id: string;
+          title: string;
+          url: string;
+          section: 'quick_links' | 'support' | 'social';
+          icon_name: string | null;
+          sort_order: number;
+          is_external: boolean;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['footer_links']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['footer_links']['Insert']>;
+      };
+      game_providers: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          api_endpoint: string;
+          api_key: string | null;
+          api_secret: string | null;
+          auth_type: 'header' | 'query' | 'bearer';
+          auth_header_name: string;
+          enabled: boolean;
+          revenue_share: number;
+          total_games: number;
+          imported_games: number;
+          config: Record<string, any> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['game_providers']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['game_providers']['Insert']>;
+      };
+      ad_placements: {
+        Row: {
+          id: string;
+          name: string;
+          position: string;
+          ad_type: 'banner' | 'video_preroll' | 'video_interstitial' | 'custom';
+          ad_network: string;
+          publisher_id: string | null;
+          ad_slot_id: string | null;
+          custom_code: string | null;
+          width: number | null;
+          height: number | null;
+          format: string;
+          responsive: boolean;
+          enabled: boolean;
+          show_on_pages: string[];
+          priority: number;
+          layout_type: string;
+          skipable: boolean | null;
+          duration: number | null;
+          show_interval: number | null;
+          impressions: number;
+          clicks: number;
+          revenue: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['ad_placements']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['ad_placements']['Insert']>;
+      };
+      ad_analytics: {
+        Row: {
+          id: string;
+          placement_id: string;
+          content_id: string | null;
+          user_id: string | null;
+          session_id: string | null;
+          event_type: 'impression' | 'click' | 'view' | 'skip' | 'complete';
+          revenue: number;
+          user_agent: string | null;
+          ip_address: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['ad_analytics']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['ad_analytics']['Insert']>;
       };
     };
   };

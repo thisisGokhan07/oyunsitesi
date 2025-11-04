@@ -1,8 +1,7 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
@@ -17,8 +16,107 @@ import {
   FolderTree,
   Users,
   BarChart3,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Mail, Lock, Loader2 } from 'lucide-react';
+
+function AdminLoginScreen() {
+  const [email, setEmail] = useState('admin@serigame.com');
+  const [password, setPassword] = useState('Admin123!@#');
+  const [loading, setLoading] = useState(false);
+  const { signIn } = useAuth();
+  const router = useRouter();
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await signIn(email, password);
+      toast.success('Başarıyla giriş yapıldı!');
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error.message || 'Giriş başarısız!');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+      <div className="w-full max-w-md p-8 bg-gray-900 rounded-lg border border-white/10">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Paneli</h1>
+          <p className="text-gray-400">Yönetici girişi yapın</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@serigame.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Şifre</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10"
+                required
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-orange-500 hover:bg-orange-600"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Giriş yapılıyor...
+              </>
+            ) : (
+              'Giriş Yap'
+            )}
+          </Button>
+        </form>
+
+        <div className="mt-6 pt-6 border-t border-white/5">
+          <Link
+            href="/"
+            className="block text-center text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            ← Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const menuItems = [
   { title: 'Site Anasayfa', href: '/', icon: Home, external: true },
@@ -63,6 +161,18 @@ const menuItems = [
     title: 'Aktivite Kayıtları',
     href: '/admin/aktivite',
     icon: Activity,
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    title: 'Footer Linkleri',
+    href: '/admin/footer-linkler',
+    icon: LinkIcon,
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    title: 'Oyun Sağlayıcıları',
+    href: '/admin/oyun-saglayicilari',
+    icon: Gamepad2,
     roles: ['super_admin', 'admin'],
   },
 ];
@@ -172,23 +282,26 @@ export default function AdminLayout({
   }
 
   if (!user) {
+    return <AdminLoginScreen />;
+  }
+
+  // Check if user is admin
+  const { isAdmin } = useAuth();
+  if (!isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-950">
-        <div className="text-center max-w-md p-8">
-          <h1 className="text-3xl font-bold text-white mb-4">Admin Paneli</h1>
+        <div className="text-center max-w-md p-8 bg-gray-900 rounded-lg border border-white/10">
+          <h1 className="text-3xl font-bold text-white mb-4">Yetkisiz Erişim</h1>
           <p className="text-gray-400 mb-6">
-            Bu sayfaya erişmek için giriş yapmalısınız.
+            Bu sayfaya erişmek için admin yetkisine sahip olmalısınız.
           </p>
           <div className="space-y-4">
             <Link
               href="/"
-              className="block px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+              className="inline-block px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
             >
               Ana Sayfaya Dön
             </Link>
-            <p className="text-sm text-gray-500">
-              Test için: admin@serigame.com / Admin123!@#
-            </p>
           </div>
         </div>
       </div>

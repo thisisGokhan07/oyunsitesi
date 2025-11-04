@@ -70,7 +70,7 @@ export function SearchResults({
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-gray-400 flex items-center gap-1">
                   <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                  {game.rating}
+                  {(game.rating || 0).toFixed(1)}
                 </span>
               </div>
             </div>

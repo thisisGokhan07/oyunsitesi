@@ -2,12 +2,18 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { GameDetailClient } from '@/components/GameDetailClient';
-import { mockContent } from '@/lib/mock-data';
+import { getContentBySlug, getAllContent } from '@/lib/data-service';
 
-export function generateStaticParams() {
-  return mockContent.map((game) => ({
-    slug: game.slug,
-  }));
+export async function generateStaticParams() {
+  try {
+    const allContent = await getAllContent();
+    return (allContent as any[]).map((content) => ({
+      slug: content.slug,
+    }));
+  } catch (error) {
+    console.error('Error generating static params for games:', error);
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -15,7 +21,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const game = mockContent.find((g) => g.slug === params.slug);
+  const game = await getContentBySlug(params.slug);
 
   if (!game) {
     return {
@@ -24,8 +30,8 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${game.title} - Ücretsiz Oyna | SeriGame`,
-    description: game.description || '',
+    title: game.meta_title || `${game.title} - Ücretsiz Oyna | SeriGame`,
+    description: game.meta_description || game.description || '',
     keywords: game.keywords ? game.keywords.join(', ') : [
       game.title,
       'ücretsiz oyun',
@@ -36,7 +42,7 @@ export async function generateMetadata({
     ].join(', '),
     openGraph: {
       title: game.title,
-      description: game.description || '',
+      description: game.meta_description || game.description || '',
       images: [game.thumbnail_url],
       type: 'website',
       siteName: 'SeriGame',
@@ -44,18 +50,18 @@ export async function generateMetadata({
     twitter: {
       card: 'summary_large_image',
       title: game.title,
-      description: game.description || '',
+      description: game.meta_description || game.description || '',
       images: [game.thumbnail_url],
     },
   };
 }
 
-export default function GameDetailPage({
+export default async function GameDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const game = mockContent.find((g) => g.slug === params.slug);
+  const game = await getContentBySlug(params.slug);
 
   if (!game) {
     return (
@@ -72,9 +78,11 @@ export default function GameDetailPage({
     );
   }
 
-  const relatedGames = mockContent
-    .filter((g) => g.category_id === game.category_id && g.id !== game.id)
-    .sort((a, b) => b.play_count - a.play_count)
+  // Get related games
+  const allContent = await getAllContent();
+  const relatedGames = allContent
+    .filter((g: any) => g.category_id === game.category_id && g.id !== game.id)
+    .sort((a: any, b: any) => b.play_count - a.play_count)
     .slice(0, 8);
 
   return (
@@ -83,7 +91,7 @@ export default function GameDetailPage({
 
       <main className="flex-1 pt-16 lg:pt-20">
         <div className="container py-6">
-          <GameDetailClient game={game} relatedGames={relatedGames} />
+          <GameDetailClient game={game as any} relatedGames={relatedGames as any} />
         </div>
       </main>
 
@@ -96,12 +104,12 @@ export default function GameDetailPage({
             '@context': 'https://schema.org',
             '@type': 'VideoGame',
             name: game.title,
-            description: game.description,
+            description: game.description || game.meta_description || '',
             image: game.thumbnail_url,
             playMode: 'SinglePlayer',
             aggregateRating: {
               '@type': 'AggregateRating',
-              ratingValue: game.rating,
+              ratingValue: game.rating || 0,
               ratingCount: game.rating_count || 0,
             },
           }),
