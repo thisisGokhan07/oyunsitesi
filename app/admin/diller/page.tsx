@@ -100,9 +100,10 @@ export default function DillerPage() {
 
       // If setting as default, unset other defaults
       if (formData.is_default) {
+        // @ts-ignore - Type inference issue with Supabase update
         await supabase
           .from('languages')
-          .update({ is_default: false } as any)
+          .update({ is_default: false })
           .neq('id', editingLanguage?.id || '');
       }
 
