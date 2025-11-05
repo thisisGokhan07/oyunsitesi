@@ -160,7 +160,6 @@ export default function DillerPage() {
   async function setAsDefault(id: string) {
     try {
       // Unset all defaults
-      // @ts-expect-error - Type inference issue with Supabase update
       await supabase
         .from('languages')
         .update({ is_default: false });
