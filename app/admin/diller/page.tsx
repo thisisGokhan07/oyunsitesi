@@ -100,11 +100,13 @@ export default function DillerPage() {
 
       // If setting as default, unset other defaults
       if (formData.is_default) {
-        // @ts-ignore - Type inference issue with Supabase update
-        await supabase
-          .from('languages')
-          .update({ is_default: false })
-          .neq('id', editingLanguage?.id || '');
+        // @ts-expect-error - Type inference issue with Supabase update
+        const query = supabase.from('languages').update({ is_default: false });
+        if (editingLanguage?.id) {
+          await query.neq('id', editingLanguage.id);
+        } else {
+          await query;
+        }
       }
 
       const languageData = {
