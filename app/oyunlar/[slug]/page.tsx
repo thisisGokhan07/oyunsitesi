@@ -141,9 +141,3 @@ export default async function GameDetailPage({
     </div>
   );
 }
-
-        }}
-      />
-    </div>
-  );
-}
