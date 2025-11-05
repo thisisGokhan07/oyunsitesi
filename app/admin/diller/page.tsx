@@ -145,9 +145,9 @@ export default function DillerPage() {
 
   async function toggleActive(id: string, currentStatus: boolean) {
     try {
-      // @ts-expect-error - Type inference issue with Supabase update
       const { error } = await supabase
         .from('languages')
+        // @ts-expect-error - Type inference issue with Supabase update
         .update({ is_active: !currentStatus })
         .eq('id', id);
 
