@@ -15,6 +15,16 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Client-side için createClient wrapper fonksiyonu
+export function createClientWrapper() {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+}
+
 export function createServerClient() {
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {

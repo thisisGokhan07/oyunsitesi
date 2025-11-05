@@ -34,3 +34,6 @@ export function createServerClient() {
   });
 }
 
+// Server-side için supabase export (createServerClient alias)
+export const supabase = createServerClient();
+

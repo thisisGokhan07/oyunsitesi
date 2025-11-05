@@ -80,10 +80,11 @@ export default function CevirilerPage() {
         .order('sort_order', { ascending: true });
 
       if (error) throw error;
-      setLanguages(data || []);
-      if (data && data.length > 0 && !selectedLanguage) {
-        setSelectedLanguage(data[0].code);
-        setFormData({ ...formData, language_code: data[0].code });
+      const languages = (data || []) as Language[];
+      setLanguages(languages);
+      if (languages.length > 0 && !selectedLanguage) {
+        setSelectedLanguage(languages[0].code);
+        setFormData({ ...formData, language_code: languages[0].code });
       }
     } catch (error: any) {
       toast.error('Diller yüklenemedi: ' + error.message);

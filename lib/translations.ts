@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 
 export interface Language {
   id: string;
@@ -27,7 +27,6 @@ export interface TranslationDict {
 
 // Get all active languages
 export async function getActiveLanguages(): Promise<Language[]> {
-  const supabase = createClient();
   const { data, error } = await supabase
     .from('languages')
     .select('*')
@@ -44,7 +43,6 @@ export async function getActiveLanguages(): Promise<Language[]> {
 
 // Get default language
 export async function getDefaultLanguage(): Promise<Language | null> {
-  const supabase = createClient();
   const { data, error } = await supabase
     .from('languages')
     .select('*')
@@ -62,7 +60,6 @@ export async function getDefaultLanguage(): Promise<Language | null> {
 
 // Get translations for a language
 export async function getTranslations(languageCode: string): Promise<TranslationDict> {
-  const supabase = createClient();
   const { data, error } = await supabase
     .from('translations')
     .select('*')
@@ -92,7 +89,6 @@ export async function getTranslation(
   namespace: string,
   key: string
 ): Promise<string | null> {
-  const supabase = createClient();
   const { data, error } = await supabase
     .from('translations')
     .select('value')
@@ -135,7 +131,6 @@ export async function getContentTranslation(
   meta_title: string | null;
   meta_description: string | null;
 } | null> {
-  const supabase = createClient();
   const { data, error } = await supabase
     .from('content_translations')
     .select('*')
