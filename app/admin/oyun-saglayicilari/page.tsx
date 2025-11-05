@@ -252,16 +252,29 @@ export default function OyunSaglayicilariPage() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleImport(provider.id)}
-                  className="flex-1"
-                  disabled={!provider.enabled || !provider.api_key}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  İçe Aktar
-                </Button>
+                {provider.slug === 'itchio' ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/admin/oyun-saglayicilari/itchio-manual')}
+                    className="flex-1"
+                    disabled={!provider.enabled}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Manuel Ekle
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleImport(provider.id)}
+                    className="flex-1"
+                    disabled={!provider.enabled || !provider.api_key}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    İçe Aktar
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

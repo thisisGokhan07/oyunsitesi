@@ -217,34 +217,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function upgradeToPremium(durationMonths: number = 1) {
     if (!user) throw new Error('No user logged in');
 
-    // Premium bitiş tarihini hesapla
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
+    try {
+      // Premium bitiş tarihini hesapla
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
 
-    // Mevcut premium süresini kontrol et
-    const currentExpiresAt = profile?.premium_expires_at 
-      ? new Date(profile.premium_expires_at) 
-      : null;
+      // Mevcut premium süresini kontrol et
+      const currentExpiresAt = profile?.premium_expires_at 
+        ? new Date(profile.premium_expires_at) 
+        : null;
 
-    let finalExpiresAt = expiresAt;
-    
-    // Eğer aktif premium varsa, mevcut süreye ekle
-    if (currentExpiresAt && currentExpiresAt > new Date()) {
-      finalExpiresAt = new Date(currentExpiresAt);
-      finalExpiresAt.setMonth(finalExpiresAt.getMonth() + durationMonths);
+      let finalExpiresAt = expiresAt;
+      
+      // Eğer aktif premium varsa, mevcut süreye ekle
+      if (currentExpiresAt && currentExpiresAt > new Date()) {
+        finalExpiresAt = new Date(currentExpiresAt);
+        finalExpiresAt.setMonth(finalExpiresAt.getMonth() + durationMonths);
+      }
+
+      console.log('🔄 Premium upgrade başlatılıyor:', {
+        userId: user.id,
+        durationMonths,
+        expiresAt: finalExpiresAt.toISOString(),
+      });
+
+      const { data, error } = await (supabase
+        .from('user_profiles')
+        .update as any)({
+        is_premium: true,
+        premium_expires_at: finalExpiresAt.toISOString(),
+      })
+        .eq('id', user.id)
+        .select();
+
+      if (error) {
+        console.error('❌ Premium upgrade hatası:', error);
+        throw error;
+      }
+
+      console.log('✅ Premium upgrade başarılı:', data);
+
+      // Profili yeniden yükle
+      await fetchProfile(user.id);
+
+      // Güncellenmiş profili kontrol et
+      const { data: updatedProfile } = await supabase
+        .from('user_profiles')
+        .select('is_premium, premium_expires_at')
+        .eq('id', user.id)
+        .single();
+
+      if (updatedProfile) {
+        console.log('✅ Premium durumu doğrulandı:', updatedProfile);
+      } else {
+        console.warn('⚠️ Premium durumu doğrulanamadı');
+      }
+    } catch (error: any) {
+      console.error('❌ Premium upgrade exception:', error);
+      throw error;
     }
-
-    const { error } = await (supabase
-      .from('user_profiles')
-      .update as any)({
-      is_premium: true,
-      premium_expires_at: finalExpiresAt.toISOString(),
-    })
-      .eq('id', user.id);
-
-    if (error) throw error;
-
-    await fetchProfile(user.id);
   }
 
   const value = {
