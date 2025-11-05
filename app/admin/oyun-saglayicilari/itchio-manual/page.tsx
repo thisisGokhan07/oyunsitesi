@@ -61,7 +61,7 @@ export default function ItchioManualImportPage() {
         .eq('slug', 'itchio')
         .single();
 
-      if (!provider) {
+      if (!provider || !(provider as any).id) {
         toast.error('Itch.io sağlayıcısı bulunamadı!');
         return;
       }
@@ -86,12 +86,12 @@ export default function ItchioManualImportPage() {
         .maybeSingle();
 
       if (catData) {
-        categoryId = catData.id;
+        categoryId = (catData as any).id;
       } else {
         const categoryName = formData.category.charAt(0).toUpperCase() + formData.category.slice(1);
-        const { data: newCat } = await supabase
+        const { data: newCat } = await (supabase
           .from('categories')
-          .insert({
+          .insert as any)({
             name: categoryName,
             slug: categorySlug,
             description: `${categoryName} oyunları`,
@@ -105,7 +105,7 @@ export default function ItchioManualImportPage() {
           .select('id')
           .single();
 
-        if (newCat) categoryId = newCat.id;
+            if (newCat) categoryId = (newCat as any).id;
       }
 
       if (!categoryId) {
@@ -114,9 +114,9 @@ export default function ItchioManualImportPage() {
       }
 
       // Oyunu ekle
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('content')
-        .insert({
+        .insert as any)({
           title: formData.title,
           slug: slug,
           description: formData.description || `${formData.title} - Itch.io oyunu`,
@@ -124,7 +124,7 @@ export default function ItchioManualImportPage() {
           content_type: 'game',
           age_group: formData.ageGroup,
           category_id: categoryId,
-          provider_id: provider.id,
+          provider_id: (provider as any).id,
           provider_game_id: formData.itchUrl,
           thumbnail_url: formData.thumbnailUrl || 'https://via.placeholder.com/500x300?text=Itch.io+Game',
           content_url: embedUrl,
@@ -155,7 +155,7 @@ export default function ItchioManualImportPage() {
       }
 
       // Imported count güncelle
-      await supabase.rpc('increment_provider_imported', { provider_id: provider.id });
+      await (supabase.rpc as any)('increment_provider_imported', { provider_id: (provider as any).id });
     } catch (error: any) {
       toast.error('Import hatası: ' + error.message);
       console.error(error);

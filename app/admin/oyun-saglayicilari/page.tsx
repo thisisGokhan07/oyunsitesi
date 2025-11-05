@@ -134,17 +134,17 @@ export default function OyunSaglayicilariPage() {
       };
 
       if (editingProvider) {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('game_providers')
-          .update(providerData)
+          .update as any)(providerData)
           .eq('id', editingProvider.id);
 
         if (error) throw error;
         toast.success('Sağlayıcı güncellendi!');
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('game_providers')
-          .insert([providerData]);
+          .insert as any)([providerData]);
 
         if (error) throw error;
         toast.success('Sağlayıcı eklendi!');
@@ -176,9 +176,9 @@ export default function OyunSaglayicilariPage() {
 
   async function toggleEnabled(id: string, currentStatus: boolean) {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('game_providers')
-        .update({ enabled: !currentStatus })
+        .update as any)({ enabled: !currentStatus })
         .eq('id', id);
 
       if (error) throw error;

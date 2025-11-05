@@ -108,17 +108,17 @@ export default function FooterLinklerPage() {
   async function saveLink() {
     try {
       if (editingLink) {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('footer_links')
-          .update(formData)
+          .update as any)(formData)
           .eq('id', editingLink.id);
 
         if (error) throw error;
         toast.success('Link güncellendi!');
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('footer_links')
-          .insert([formData]);
+          .insert as any)([formData]);
 
         if (error) throw error;
         toast.success('Link eklendi!');
@@ -149,9 +149,9 @@ export default function FooterLinklerPage() {
 
   async function togglePublished(id: string, currentStatus: boolean) {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('footer_links')
-        .update({ published: !currentStatus })
+        .update as any)({ published: !currentStatus })
         .eq('id', id);
 
       if (error) throw error;
@@ -181,14 +181,14 @@ export default function FooterLinklerPage() {
     const targetNewSortOrder = link.sort_order;
 
     try {
-      await supabase
+      await (supabase
         .from('footer_links')
-        .update({ sort_order: newSortOrder })
+        .update as any)({ sort_order: newSortOrder })
         .eq('id', id);
 
-      await supabase
+      await (supabase
         .from('footer_links')
-        .update({ sort_order: targetNewSortOrder })
+        .update as any)({ sort_order: targetNewSortOrder })
         .eq('id', targetLink.id);
 
       toast.success('Sıralama güncellendi');

@@ -20,9 +20,12 @@ import { SearchResults } from '@/components/SearchResults';
 import { useDebounce } from '@/hooks/use-debounce';
 import { searchGames, saveRecentSearch, getRecentSearches, trackSearch } from '@/lib/search';
 import { searchContent, getAllCategories } from '@/lib/data-service';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { useTranslation } from '@/contexts/TranslationContext';
 
 export function Header() {
   const { user, profile, signOut, isAdmin, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -202,7 +205,8 @@ export function Header() {
             </div>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-4">
+          <nav className="hidden lg:flex items-center gap-2">
+            <LanguageSelector />
             <div 
               className="relative"
               onMouseEnter={() => setIsCategoriesOpen(true)}
@@ -212,7 +216,7 @@ export function Header() {
                 variant="ghost"
                 className="gap-2"
               >
-                Kategoriler
+                {t('header', 'categories', 'Kategoriler')}
                 <ChevronDown className="h-4 w-4" />
               </Button>
 

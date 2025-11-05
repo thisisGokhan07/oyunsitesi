@@ -25,6 +25,8 @@ export default function Home() {
           getAllContent(),
           getAllCategories(),
         ]);
+        console.log('📊 Loaded content:', contentData?.length || 0, 'items');
+        console.log('📊 Content data:', contentData);
         setContent(contentData as any);
         setCategories(categoriesData as any);
       } catch (error) {
@@ -42,14 +44,38 @@ export default function Home() {
   };
 
   const popularContent = filterByAgeGroup(
-    [...content].sort((a, b) => b.play_count - a.play_count).slice(0, 16)
+    [...content]
+      .filter(c => c && (c.play_count || 0) >= 0) // Null/undefined kontrolü
+      .sort((a, b) => (b.play_count || 0) - (a.play_count || 0))
+      .slice(0, 16)
   );
 
   const newContent = filterByAgeGroup(
-    [...content].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ).slice(0, 16)
+    [...content]
+      .filter(c => c && c.created_at) // Null kontrolü
+      .sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 16)
   );
+
+  // Debug: Console'a yazdır
+  useEffect(() => {
+    console.log('🎮 Content state:', content.length, 'items');
+    console.log('🔥 Popular content:', popularContent.length, 'items');
+    console.log('🆕 New content:', newContent.length, 'items');
+    if (content.length > 0) {
+      console.log('📋 İlk 3 oyun:', content.slice(0, 3).map(c => c.title));
+    }
+    if (popularContent.length > 0) {
+      console.log('🔥 Popüler ilk 3:', popularContent.slice(0, 3).map(c => c.title));
+    }
+    if (newContent.length > 0) {
+      console.log('🆕 Yeni ilk 3:', newContent.slice(0, 3).map(c => c.title));
+    }
+  }, [content, popularContent, newContent]);
 
   const scrollToGames = () => {
     document.getElementById('games-section')?.scrollIntoView({ behavior: 'smooth' });

@@ -20,6 +20,7 @@ type GameProvider = {
   api_key: string | null;
   auth_type: 'header' | 'query' | 'bearer';
   auth_header_name: string;
+  imported_games: number;
   config: any;
 };
 
@@ -158,11 +159,11 @@ export default function ImportPage() {
             .maybeSingle();
 
           if (catData) {
-            categoryId = catData.id;
+            categoryId = (catData as any).id;
           } else {
-            const { data: newCat } = await supabase
+            const { data: newCat } = await (supabase
               .from('categories')
-              .insert({
+              .insert as any)({
                 name: categoryName,
                 slug: categorySlug,
                 description: `${categoryName} oyunları`,
@@ -176,7 +177,7 @@ export default function ImportPage() {
               .select('id')
               .single();
 
-            if (newCat) categoryId = newCat.id;
+            if (newCat) categoryId = (newCat as any).id;
           }
 
           if (!categoryId) {
@@ -198,9 +199,9 @@ export default function ImportPage() {
           const providerGameId = game.id || game.game_id || slug;
 
           // Oyunu ekle
-          const { error: insertError } = await supabase
+          const { error: insertError } = await (supabase
             .from('content')
-            .insert({
+            .insert as any)({
               title: title,
               slug: slug,
               description: getNestedValue(game, fields.description || 'description') || `${title} oyunu.`,
@@ -234,9 +235,9 @@ export default function ImportPage() {
       }
 
       // Imported count güncelle
-      await supabase
+      await (supabase
         .from('game_providers')
-        .update({ imported_games: provider.imported_games + successCount })
+        .update as any)({ imported_games: ((provider as any).imported_games || 0) + successCount })
         .eq('id', provider.id);
 
       setImportResult({

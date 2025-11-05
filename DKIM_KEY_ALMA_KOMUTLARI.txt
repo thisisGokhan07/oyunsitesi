@@ -1,0 +1,41 @@
+==========================================
+DKIM KEY ALMA KOMUTLARI - KOPYALA YAPIŞTIR
+==========================================
+
+Sunucuya SSH ile bağlan ve şu komutları sırayla çalıştır:
+
+---
+1. OpenDKIM KUR (eğer yoksa):
+---
+sudo apt update && sudo apt install -y opendkim opendkim-tools
+
+---
+2. DKIM KEY OLUŞTUR:
+---
+sudo mkdir -p /etc/opendkim/keys && sudo opendkim-genkey -t -s mail -d serigame.com && sudo mv mail.private /etc/opendkim/keys/serigame.com.private && sudo mv mail.txt /etc/opendkim/keys/serigame.com.txt && sudo chown opendkim:opendkim /etc/opendkim/keys/serigame.com.private && sudo chmod 600 /etc/opendkim/keys/serigame.com.private
+
+---
+3. DKIM KEY'İ GÖRÜNTÜLE (Cloudflare'e eklenecek):
+---
+cat /etc/opendkim/keys/serigame.com.txt | grep -oP '(?<=").*(?=")' | tr -d '"'
+
+---
+VEYA SADECE KEY'İ GÖRMEK İÇİN:
+---
+cat /etc/opendkim/keys/serigame.com.txt
+
+---
+ÇIKTI ŞU ŞEKİLDE OLACAK:
+---
+mail._domainkey IN TXT ( "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..." )
+
+---
+CLOUDFLARE'E EKLENECEK:
+---
+Type: TXT
+Name: mail._domainkey
+Content: v=DKIM1; k=rsa; p=... (yukarıdaki komuttan çıkan key'i buraya yapıştır, tırnak işareti OLMADAN)
+Proxy: KAPALI (DNS only - Gri Cloud)
+
+==========================================
+

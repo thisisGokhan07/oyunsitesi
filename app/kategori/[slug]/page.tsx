@@ -3,11 +3,34 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CategoryPageClient } from '@/components/CategoryPageClient';
 import { getCategoryBySlug, getContentByCategory, getAllCategories } from '@/lib/data-service';
+import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function generateStaticParams() {
   try {
-    const allCategories = await getAllCategories();
-    return (allCategories as any[]).map((category) => ({
+    // Server-side'da admin client kullan (RLS bypass)
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin is null, check SUPABASE_SERVICE_ROLE_KEY');
+      return [];
+    }
+
+    const { data: allCategories, error } = await supabaseAdmin
+      .from('categories')
+      .select('slug')
+      .eq('published', true)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Error generating static params for categories:', error);
+      return [];
+    }
+
+    if (!allCategories || allCategories.length === 0) {
+      console.warn('No categories found for static params');
+      return [];
+    }
+
+    console.log(`✅ generateStaticParams (categories): Found ${allCategories.length} categories`);
+    return allCategories.map((category) => ({
       slug: category.slug,
     }));
   } catch (error) {

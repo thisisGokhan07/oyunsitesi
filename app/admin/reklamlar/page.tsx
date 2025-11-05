@@ -115,9 +115,9 @@ export default function AdManagement() {
         .select('impressions, clicks, revenue');
 
       if (placementsData) {
-        const totalImpressions = placementsData.reduce((sum, p) => sum + (p.impressions || 0), 0);
-        const totalClicks = placementsData.reduce((sum, p) => sum + (p.clicks || 0), 0);
-        const totalRevenue = placementsData.reduce((sum, p) => sum + parseFloat(String(p.revenue || 0)), 0);
+        const totalImpressions = placementsData.reduce((sum: number, p: any) => sum + (p.impressions || 0), 0);
+        const totalClicks = placementsData.reduce((sum: number, p: any) => sum + (p.clicks || 0), 0);
+        const totalRevenue = placementsData.reduce((sum: number, p: any) => sum + parseFloat(String(p.revenue || 0)), 0);
 
         setStats({
           total: placementsData.length,
@@ -213,17 +213,17 @@ export default function AdManagement() {
       }
 
       if (editingPlacement) {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('ad_placements')
-          .update(placementData)
+          .update as any)(placementData)
           .eq('id', editingPlacement.id);
 
         if (error) throw error;
         toast.success('Reklam güncellendi!');
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase
           .from('ad_placements')
-          .insert([placementData]);
+          .insert as any)([placementData]);
 
         if (error) throw error;
         toast.success('Reklam eklendi!');
@@ -257,9 +257,9 @@ export default function AdManagement() {
 
   async function toggleEnabled(id: string, currentStatus: boolean) {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('ad_placements')
-        .update({ enabled: !currentStatus })
+        .update as any)({ enabled: !currentStatus })
         .eq('id', id);
 
       if (error) throw error;

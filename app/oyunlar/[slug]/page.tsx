@@ -3,11 +3,34 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { GameDetailClient } from '@/components/GameDetailClient';
 import { getContentBySlug, getAllContent } from '@/lib/data-service';
+import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function generateStaticParams() {
   try {
-    const allContent = await getAllContent();
-    return (allContent as any[]).map((content) => ({
+    // Server-side'da admin client kullan (RLS bypass)
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin is null, check SUPABASE_SERVICE_ROLE_KEY');
+      return [];
+    }
+
+    const { data: allContent, error } = await supabaseAdmin
+      .from('content')
+      .select('slug')
+      .eq('published', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error generating static params for games:', error);
+      return [];
+    }
+
+    if (!allContent || allContent.length === 0) {
+      console.warn('No content found for static params');
+      return [];
+    }
+
+    console.log(`✅ generateStaticParams: Found ${allContent.length} games`);
+    return allContent.map((content) => ({
       slug: content.slug,
     }));
   } catch (error) {
