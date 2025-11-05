@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Insert analytics event
-    const { error } = await supabase.from('ad_analytics').insert({
+    // @ts-expect-error - Type inference issue with Supabase insert
+    const insertQuery = supabase.from('ad_analytics').insert({
       placement_id,
       content_id,
       event_type,
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
       user_agent: userAgent,
       ip_address: ip,
     });
+    const { error } = await insertQuery;
 
     if (error) {
       console.error('Ad analytics error:', error);
@@ -45,10 +47,9 @@ export async function POST(request: NextRequest) {
           updates.revenue = (placement.revenue || 0) + revenue;
         }
 
-        await supabase
-          .from('ad_placements')
-          .update(updates)
-          .eq('id', placement_id);
+        // @ts-expect-error - Type inference issue with Supabase update
+        const updateQuery = supabase.from('ad_placements').update(updates);
+        await updateQuery.eq('id', placement_id);
       }
     }
 
