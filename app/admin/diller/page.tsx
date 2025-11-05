@@ -160,16 +160,14 @@ export default function DillerPage() {
   async function setAsDefault(id: string) {
     try {
       // Unset all defaults
-      await supabase
-        .from('languages')
-        .update({ is_default: false });
+      // @ts-expect-error - Type inference issue with Supabase update
+      const unsetQuery = supabase.from('languages').update({ is_default: false });
+      await unsetQuery;
 
       // Set this as default
       // @ts-expect-error - Type inference issue with Supabase update
-      const { error } = await supabase
-        .from('languages')
-        .update({ is_default: true })
-        .eq('id', id);
+      const setQuery = supabase.from('languages').update({ is_default: true });
+      const { error } = await setQuery.eq('id', id);
 
       if (error) throw error;
       toast.success('Varsayılan dil ayarlandı!');
