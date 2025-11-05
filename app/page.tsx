@@ -1,85 +1,34 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Gamepad2, Grid3x3 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { AgeGroupTabs } from '@/components/AgeGroupTabs';
-import { ContentCard } from '@/components/ContentCard';
-import { CategoryCard } from '@/components/CategoryCard';
-import { Button } from '@/components/ui/button';
 import { getAllContent, getAllCategories } from '@/lib/data-service';
-import { AgeGroup } from '@/types';
 import type { Content, Category } from '@/types';
+import { HomePageClient } from '@/components/HomePageClient';
 
-export default function Home() {
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState<AgeGroup | 'all'>('all');
-  const [content, setContent] = useState<Content[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function Home() {
+  // Server-side'da veritabanından direkt çek
+  const [contentData, categoriesData] = await Promise.all([
+    getAllContent(),
+    getAllCategories(),
+  ]);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [contentData, categoriesData] = await Promise.all([
-          getAllContent(),
-          getAllCategories(),
-        ]);
-        console.log('📊 Loaded content:', contentData?.length || 0, 'items');
-        console.log('📊 Content data:', contentData);
-        setContent(contentData as any);
-        setCategories(categoriesData as any);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+  const content = (contentData || []) as Content[];
+  const categories = (categoriesData || []) as Category[];
 
-  const filterByAgeGroup = (items: Content[]) => {
-    if (selectedAgeGroup === 'all') return items;
-    return items.filter((item) => item.age_group === selectedAgeGroup);
-  };
+  // Popüler oyunlar (play_count'a göre)
+  const popularContent = [...content]
+    .filter(c => c && (c.play_count || 0) >= 0)
+    .sort((a, b) => (b.play_count || 0) - (a.play_count || 0))
+    .slice(0, 16);
 
-  const popularContent = filterByAgeGroup(
-    [...content]
-      .filter(c => c && (c.play_count || 0) >= 0) // Null/undefined kontrolü
-      .sort((a, b) => (b.play_count || 0) - (a.play_count || 0))
-      .slice(0, 16)
-  );
-
-  const newContent = filterByAgeGroup(
-    [...content]
-      .filter(c => c && c.created_at) // Null kontrolü
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, 16)
-  );
-
-  // Debug: Console'a yazdır
-  useEffect(() => {
-    console.log('🎮 Content state:', content.length, 'items');
-    console.log('🔥 Popular content:', popularContent.length, 'items');
-    console.log('🆕 New content:', newContent.length, 'items');
-    if (content.length > 0) {
-      console.log('📋 İlk 3 oyun:', content.slice(0, 3).map(c => c.title));
-    }
-    if (popularContent.length > 0) {
-      console.log('🔥 Popüler ilk 3:', popularContent.slice(0, 3).map(c => c.title));
-    }
-    if (newContent.length > 0) {
-      console.log('🆕 Yeni ilk 3:', newContent.slice(0, 3).map(c => c.title));
-    }
-  }, [content, popularContent, newContent]);
-
-  const scrollToGames = () => {
-    document.getElementById('games-section')?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Yeni eklenenler (created_at'e göre)
+  const newContent = [...content]
+    .filter(c => c && c.created_at)
+    .sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    })
+    .slice(0, 16);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -94,82 +43,15 @@ export default function Home() {
             <p className="text-sm md:text-base text-white/90">
               Hemen oyna, indirme gerektirmez
             </p>
-            <div className="pt-2">
-              <Button
-                size="lg"
-                onClick={scrollToGames}
-                className="bg-white text-primary hover:bg-white/90 font-bold text-base px-6 h-12 shadow-xl"
-              >
-                Oyunları Gör
-              </Button>
-            </div>
           </div>
         </section>
 
-        <AgeGroupTabs onSelectAgeGroup={setSelectedAgeGroup} />
-
-        <section id="games-section" className="container py-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Gamepad2 className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Popüler Oyunlar</h2>
-          </div>
-
-          {popularContent.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground text-sm">
-                Bu kategoride henüz içerik bulunmuyor.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
-              {popularContent.map((content) => (
-                <ContentCard key={content.id} content={content} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="container py-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Gamepad2 className="h-5 w-5 text-accent" />
-            <h2 className="text-xl font-bold">Yeni Eklenenler</h2>
-          </div>
-
-          {newContent.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground text-sm">
-                Bu kategoride henüz içerik bulunmuyor.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
-              {newContent.map((content) => (
-                <ContentCard key={content.id} content={content} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="container py-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Grid3x3 className="h-5 w-5 text-secondary" />
-            <h2 className="text-xl font-bold">Kategoriler</h2>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-800 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {categories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
-            </div>
-          )}
-        </section>
+        <HomePageClient
+          initialContent={content}
+          initialCategories={categories}
+          popularContent={popularContent}
+          newContent={newContent}
+        />
       </main>
 
       <Footer />
