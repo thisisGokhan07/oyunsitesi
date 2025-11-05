@@ -102,7 +102,7 @@ export default function DillerPage() {
       if (formData.is_default) {
         await supabase
           .from('languages')
-          .update({ is_default: false })
+          .update({ is_default: false } as any)
           .neq('id', editingLanguage?.id || '');
       }
 
