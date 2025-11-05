@@ -145,11 +145,9 @@ export default function DillerPage() {
 
   async function toggleActive(id: string, currentStatus: boolean) {
     try {
-      const { error } = await supabase
-        .from('languages')
-        // @ts-expect-error - Type inference issue with Supabase update
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
+      // @ts-expect-error - Type inference issue with Supabase update
+      const query = supabase.from('languages').update({ is_active: !currentStatus });
+      const { error } = await query.eq('id', id);
 
       if (error) throw error;
       toast.success(currentStatus ? 'Dil pasif edildi!' : 'Dil aktif edildi!');
